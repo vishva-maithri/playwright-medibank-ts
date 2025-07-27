@@ -1,6 +1,7 @@
 name: Playwright Tests
 
 on:
+  # Your existing automatic triggers
   push:
     branches: [ main, develop ]
   pull_request:
@@ -8,9 +9,147 @@ on:
   schedule:
     # Run tests daily at 2 AM UTC
     - cron: '0 2 * * *'
+  
+  # NEW: Manual trigger with dropdowns
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Test Environment'
+        required: true
+        default: 'development'
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+      browser:
+        description: 'Browser to Test'
+        required: true
+        default: 'chromium'
+        type: choice
+        options:
+          - chromium
+          - firefox
+          - webkit
+          - mobile-chrome
+          - all-browsers
+      test_type:
+        description: 'Type of Tests to Run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - ui-only
+          - api-only
+          - e2e-only
+          - advanced
+      headed_mode:
+        description: 'Run in Headed Mode (visible browser)'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
-  test:
+  # NEW: Manual test job
+  manual-test:
+    if: github.event_name == 'workflow_dispatch'
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install root dependencies
+      run: npm ci
+    
+    - name: Install Angular dependencies
+      run: |
+        cd angular-app
+        npm ci
+    
+    - name: Build Angular app
+      run: |
+        cd angular-app
+        npm run build --if-present
+    
+    - name: Install Playwright Browsers
+      run: npx playwright install --with-deps
+    
+    - name: Run Playwright tests (Single Browser)
+      if: ${{ github.event.inputs.browser != 'all-browsers' }}
+      env:
+        TEST_ENV: ${{ github.event.inputs.environment }}
+        CI: true
+      run: |
+        HEADED_FLAG=""
+        if [ "${{ github.event.inputs.headed_mode }}" == "true" ]; then
+          HEADED_FLAG="--headed"
+        fi
+        
+        case "${{ github.event.inputs.test_type }}" in
+          "ui-only")
+            npx playwright test tests/ui/ --project=${{ github.event.inputs.browser }} $HEADED_FLAG
+            ;;
+          "api-only")
+            npx playwright test tests/api/ --project=${{ github.event.inputs.browser }}
+            ;;
+          "e2e-only")
+            npx playwright test tests/e2e/ --project=${{ github.event.inputs.browser }} $HEADED_FLAG
+            ;;
+          "advanced")
+            npx playwright test tests/advanced/ --project=${{ github.event.inputs.browser }} $HEADED_FLAG
+            ;;
+          *)
+            npx playwright test --project=${{ github.event.inputs.browser }} $HEADED_FLAG
+            ;;
+        esac
+    
+    - name: Run Playwright tests (All Browsers)
+      if: ${{ github.event.inputs.browser == 'all-browsers' }}
+      env:
+        TEST_ENV: ${{ github.event.inputs.environment }}
+        CI: true
+      run: |
+        HEADED_FLAG=""
+        if [ "${{ github.event.inputs.headed_mode }}" == "true" ]; then
+          HEADED_FLAG="--headed"
+        fi
+        
+        case "${{ github.event.inputs.test_type }}" in
+          "ui-only")
+            npx playwright test tests/ui/ $HEADED_FLAG
+            ;;
+          "api-only")
+            npx playwright test tests/api/
+            ;;
+          "e2e-only")
+            npx playwright test tests/e2e/ $HEADED_FLAG
+            ;;
+          "advanced")
+            npx playwright test tests/advanced/ $HEADED_FLAG
+            ;;
+          *)
+            npx playwright test $HEADED_FLAG
+            ;;
+        esac
+    
+    - name: Upload Playwright Report (Manual)
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: manual-report-${{ github.event.inputs.environment }}-${{ github.event.inputs.browser }}-${{ github.event.inputs.test_type }}
+        path: playwright-report/
+        retention-days: 30
+
+  # Your existing automatic test job (unchanged)
+  auto-test:
+    if: github.event_name != 'workflow_dispatch'
     timeout-minutes: 60
     runs-on: ubuntu-latest
     strategy:
@@ -52,21 +191,81 @@ jobs:
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: playwright-report-${{ matrix.environment }}-${{ matrix.browser }}
+        name: auto-report-${{ matrix.environment }}-${{ matrix.browser }}
         path: playwright-report/
         retention-days: 30
 
+  # Enhanced deploy-report job
   deploy-report:
     if: always()
-    needs: test
+    needs: [manual-test, auto-test]
     runs-on: ubuntu-latest
+    
     steps:
     - name: Download all artifacts
       uses: actions/download-artifact@v4
+      with:
+        path: ./reports
+    
+    - name: Create combined report index
+      run: |
+        mkdir -p ./combined-report
+        echo "<!DOCTYPE html>" > ./combined-report/index.html
+        echo "<html><head><title>Playwright Test Reports</title>" >> ./combined-report/index.html
+        echo "<style>body{font-family:Arial,sans-serif;margin:40px;} h1{color:#1976d2;} ul{list-style-type:none;} li{margin:10px 0;} a{text-decoration:none;color:#1976d2;padding:8px 16px;border:1px solid #1976d2;border-radius:4px;display:inline-block;} a:hover{background:#1976d2;color:white;}</style>" >> ./combined-report/index.html
+        echo "</head><body>" >> ./combined-report/index.html
+        echo "<h1>🧪 Playwright Test Reports</h1>" >> ./combined-report/index.html
+        echo "<p>Generated on $(date)</p>" >> ./combined-report/index.html
+        echo "<h2>📊 Available Reports:</h2><ul>" >> ./combined-report/index.html
+        
+        for dir in ./reports/*/; do
+          if [ -d "$dir" ]; then
+            dirname=$(basename "$dir")
+            echo "<li><a href='$dirname/index.html'>📋 $dirname</a></li>" >> ./combined-report/index.html
+            cp -r "$dir" "./combined-report/"
+          fi
+        done
+        
+        echo "</ul>" >> ./combined-report/index.html
+        echo "<h2>🔗 Quick Links:</h2>" >> ./combined-report/index.html
+        echo "<ul>" >> ./combined-report/index.html
+        echo "<li><a href='https://github.com/${{ github.repository }}/actions'>🏃 GitHub Actions</a></li>" >> ./combined-report/index.html
+        echo "<li><a href='https://github.com/${{ github.repository }}'>📁 Repository</a></li>" >> ./combined-report/index.html
+        echo "</ul></body></html>" >> ./combined-report/index.html
     
     - name: Deploy to GitHub Pages
       if: github.ref == 'refs/heads/main'
       uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./playwright-report
+        publish_dir: ./combined-report
+
+  # NEW: Summary job
+  summary:
+    if: always()
+    needs: [manual-test, auto-test]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Create Test Summary
+      run: |
+        echo "## 🧪 Playwright Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          echo "### 🎛️ Manual Test Run" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Browser:** ${{ github.event.inputs.browser }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Test Type:** ${{ github.event.inputs.test_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Headed Mode:** ${{ github.event.inputs.headed_mode }}" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "### 🤖 Automatic Test Run" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environments:** development, staging" >> $GITHUB_STEP_SUMMARY
+          echo "- **Browsers:** chromium, firefox, webkit" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📊 Reports" >> $GITHUB_STEP_SUMMARY
+        echo "- 📋 [View All Test Reports](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/)" >> $GITHUB_STEP_SUMMARY
+        echo "- 🏃 [View Workflow Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
