@@ -87,11 +87,38 @@ jobs:
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps
     
+    # NEW: Start Angular app in background
+    - name: Start Angular app
+      run: |
+        cd angular-app
+        npm start &
+        echo "Angular app started in background"
+        
+        # Wait for app to be ready (max 2 minutes)
+        timeout=120
+        while [ $timeout -gt 0 ]; do
+          if curl -f http://localhost:4200 >/dev/null 2>&1; then
+            echo "✅ Angular app is ready!"
+            break
+          fi
+          echo "⏳ Waiting for Angular app to start... ($timeout seconds left)"
+          sleep 5
+          timeout=$((timeout-5))
+        done
+        
+        if [ $timeout -le 0 ]; then
+          echo "❌ Angular app failed to start within 2 minutes"
+          exit 1
+        fi
+      env:
+        CI: true
+    
     - name: Run Playwright tests (Single Browser)
       if: ${{ github.event.inputs.browser != 'all-browsers' }}
       env:
         TEST_ENV: ${{ github.event.inputs.environment }}
         CI: true
+        BASE_URL: http://localhost:4200
       run: |
         HEADED_FLAG=""
         if [ "${{ github.event.inputs.headed_mode }}" == "true" ]; then
@@ -121,6 +148,7 @@ jobs:
       env:
         TEST_ENV: ${{ github.event.inputs.environment }}
         CI: true
+        BASE_URL: http://localhost:4200
       run: |
         HEADED_FLAG=""
         if [ "${{ github.event.inputs.headed_mode }}" == "true" ]; then
@@ -160,8 +188,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        environment: [development]
-        browser: [chromium]
+        environment: [development, staging]
+        browser: [chromium, firefox, webkit]
     
     steps:
     - uses: actions/checkout@v4
@@ -187,10 +215,37 @@ jobs:
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps
     
+    # NEW: Start Angular app in background  
+    - name: Start Angular app
+      run: |
+        cd angular-app
+        npm start &
+        echo "Angular app started in background"
+        
+        # Wait for app to be ready (max 2 minutes)
+        timeout=120
+        while [ $timeout -gt 0 ]; do
+          if curl -f http://localhost:4200 >/dev/null 2>&1; then
+            echo "✅ Angular app is ready at http://localhost:4200"
+            break
+          fi
+          echo "⏳ Waiting for Angular app to start... ($timeout seconds left)"
+          sleep 5
+          timeout=$((timeout-5))
+        fi
+        
+        if [ $timeout -le 0 ]; then
+          echo "❌ Angular app failed to start within 2 minutes"
+          exit 1
+        fi
+      env:
+        CI: true
+    
     - name: Run Playwright tests
       env:
         TEST_ENV: ${{ matrix.environment }}
         CI: true
+        BASE_URL: http://localhost:4200
       run: npx playwright test --project=${{ matrix.browser }}
     
     - name: Upload Playwright Report
@@ -234,10 +289,12 @@ jobs:
         echo "a:hover { background: #1976d2; color: white; transform: translateY(-1px); }" >> ./combined-report/index.html
         echo ".meta { color: #666; font-size: 14px; }" >> ./combined-report/index.html
         echo ".badge { background: #4caf50; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; }" >> ./combined-report/index.html
+        echo ".status { margin: 20px 0; padding: 15px; background: #e8f5e8; border-left: 4px solid #4caf50; }" >> ./combined-report/index.html
         echo "</style>" >> ./combined-report/index.html
         echo "</head><body>" >> ./combined-report/index.html
         echo "<div class='container'>" >> ./combined-report/index.html
         echo "<h1>🧪 Playwright Test Reports</h1>" >> ./combined-report/index.html
+        echo "<div class='status'>✅ Tests executed with Angular app running on localhost:4200</div>" >> ./combined-report/index.html
         echo "<p class='meta'>Generated on $(date) | <span class='badge'>Latest Run</span></p>" >> ./combined-report/index.html
         echo "<h2>📊 Available Reports:</h2><ul>" >> ./combined-report/index.html
         
@@ -294,6 +351,10 @@ jobs:
           echo "- **Browsers:** chromium, firefox, webkit" >> $GITHUB_STEP_SUMMARY
         fi
         
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🚀 Application Status" >> $GITHUB_STEP_SUMMARY
+        echo "- **Angular App:** Running on localhost:4200 during tests" >> $GITHUB_STEP_SUMMARY
+        echo "- **Test Execution:** Against live Angular application" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📊 Reports" >> $GITHUB_STEP_SUMMARY
         echo "- 📋 [View All Test Reports](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/)" >> $GITHUB_STEP_SUMMARY
