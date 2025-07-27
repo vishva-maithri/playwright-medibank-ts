@@ -1,0 +1,29 @@
+<div class="app-container">
+  <header class="header">
+    <h1 class="title">Medibank Test</h1>
+    <nav class="navigation">
+      <a routerLink="/home" 
+         routerLinkActive="active" 
+         data-testid="home-link" 
+         class="nav-link">
+         Home
+      </a>
+      <a routerLink="/users" 
+         routerLinkActive="active" 
+         data-testid="users-link" 
+         class="nav-link">
+         Users
+      </a>
+      <a routerLink="/about" 
+         routerLinkActive="active" 
+         data-testid="about-link" 
+         class="nav-link">
+         About
+      </a>
+    </nav>
+  </header>
+  
+  <main class="main-content">
+    <router-outlet></router-outlet>
+  </main>
+</div>

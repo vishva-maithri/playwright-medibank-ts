@@ -1,0 +1,35 @@
+{
+  "name": "angular-playwright-framework",
+  "version": "1.0.0",
+  "scripts": {
+    "install:all": "npm install && cd angular-app && npm install",
+    "build:angular": "cd angular-app && npm run build",
+    "start:angular": "cd angular-app && npm start",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug",
+    "test:dev": "TEST_ENV=development playwright test",
+    "test:staging": "TEST_ENV=staging playwright test",
+    "test:prod": "TEST_ENV=production playwright test",
+    "test:api": "playwright test tests/api/",
+    "test:e2e": "playwright test tests/e2e/",
+    "test:ui-only": "playwright test tests/ui/",
+    "test:chrome": "playwright test --project=chromium",
+    "test:firefox": "playwright test --project=firefox",
+    "test:safari": "playwright test --project=webkit",
+    "test:mobile": "playwright test --project=mobile-chrome",
+    "report": "playwright show-report",
+    "install-browsers": "playwright install"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "@types/dotenv": "^6.1.1",
+    "dotenv": "^16.6.1",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "axe-playwright": "^2.1.0"
+  }
+}

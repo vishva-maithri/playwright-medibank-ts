@@ -1,0 +1,23 @@
+node_modules/
+test-results/
+playwright-report/
+playwright/.cache/
+.env
+*.log
+dist/
+coverage/
+
+# Angular
+angular-app/dist/
+angular-app/node_modules/
+angular-app/.angular/cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

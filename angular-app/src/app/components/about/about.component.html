@@ -1,0 +1,65 @@
+<div class="about-container" data-testid="about-container">
+  <h2>About This Application</h2>
+  
+  <div class="intro-section">
+    <p class="intro-text">
+      This is a sample Angular application built to demonstrate modern web development 
+      practices and comprehensive test automation using Playwright.
+    </p>
+  </div>
+
+  <section class="features-section">
+    <h3>Key Features</h3>
+    <div class="features-grid">
+      <div class="feature-card" 
+           *ngFor="let feature of features; trackBy: trackByTitle"
+           [attr.data-testid]="getFeatureTestId(feature.title)">
+        <div class="feature-icon">{{ feature.icon }}</div>
+        <h4>{{ feature.title }}</h4>
+        <p>{{ feature.description }}</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="tech-section">
+    <h3>Technology Stack</h3>
+    <div class="tech-grid">
+      <div class="tech-item" 
+           *ngFor="let tech of techStack; trackBy: trackByTech"
+           [attr.data-testid]="getTechTestId(tech)">
+        {{ tech }}
+      </div>
+    </div>
+  </section>
+
+  <section class="testing-section">
+    <h3>Testing Coverage</h3>
+    <div class="testing-info">
+      <p>This application includes comprehensive testing with:</p>
+      <ul>
+        <li>Unit tests for components and services</li>
+        <li>Integration tests for user workflows</li>
+        <li>End-to-end tests with Playwright</li>
+        <li>API testing and validation</li>
+        <li>Cross-browser compatibility testing</li>
+        <li>Performance testing</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="navigation-section">
+    <h3>Quick Navigation</h3>
+    <div class="nav-cards">
+      <div class="nav-card">
+        <h4>Home</h4>
+        <p>View application overview and user statistics</p>
+        <a routerLink="/home" class="nav-button">Go to Home</a>
+      </div>
+      <div class="nav-card">
+        <h4>Users</h4>
+        <p>Browse and manage user accounts</p>
+        <a routerLink="/users" class="nav-button">View Users</a>
+      </div>
+    </div>
+  </section>
+</div>

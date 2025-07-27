@@ -1,0 +1,35 @@
+<div class="home-container" data-testid="home-container">
+  <h2>Welcome to Home Page</h2>
+  
+  <div class="user-stats">
+    <div class="user-count" data-testid="user-count">
+      Total Users: {{ userCount }}
+    </div>
+    
+    <button 
+      (click)="loadUsers()" 
+      data-testid="load-users-btn"
+      [disabled]="loading"
+      class="load-button">
+      {{ loading ? 'Loading...' : 'Load Users' }}
+    </button>
+  </div>
+  
+  <div *ngIf="error" class="error-message" data-testid="error-message">
+    {{ error }}
+  </div>
+  
+  <div class="feature-cards">
+    <div class="card">
+      <h3>User Management</h3>
+      <p>View and manage user accounts</p>
+      <a routerLink="/users" class="card-link">Go to Users →</a>
+    </div>
+    
+    <div class="card">
+      <h3>About</h3>
+      <p>Learn more about this application</p>
+      <a routerLink="/about" class="card-link">Learn More →</a>
+    </div>
+  </div>
+</div>
